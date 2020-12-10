@@ -17,13 +17,12 @@ contract Bank
     uint public now_time = 0;
 
     //合同
-    struct Trust_contract
-    {
+    struct Trust_contract {
         uint start_time; //合同开始时间
         uint end_time;  //合同结束时间
         address address_from;  //合同的from方
         address address_to;  //合同的to方
-        uint amount;  //合同总额度
+        uint total;  //合同总额度
         uint used;  //被使用的额度
     }
     Trust_contract[] public contracts;
@@ -50,53 +49,42 @@ contract Bank
         contracts.push(t);
     }
 
-    //企业间的交易函数
-    function deal(address address_to, uint money) public
-    {
-        //判断交易的to方是不是bank，如果是则终止交易
-        if(address_to == bank) return ;
-        //判断交易的from方信用度，如果小于60，则终止交易
-        if(credit[msg.sender] < 60) return ;                        //更改
-        //遍历发起交易的企业的合同，判断余额是否足够
-        uint mount = 0; // mount用于存储总余额
-        bool flag = false;
-        for(uint i = 0; i < constructor.length; i++)
-        {
-            if(constructor[i].address_to == msg.sender) 
-                mount += (contracts[i].amount - contracts[i].used);
-            if(mount > money)
-            {
-                flag = true;
+    //应收账款的转让
+    function transfer(address payee, uint money) public returns (bool) {
+        require(payee == bank, "Can't transfer to bank");
+
+        //检查额度是否充足
+        uint total_available = 0;
+        bool enough = false;
+        for(uint i = 0; i < constructor.length; i++) {
+            if(constructor[i].payee == msg.sender) 
+                total_available += (contracts[i].total - contracts[i].used);
+            if(total_available >= money) {
+                enough = true;
                 break;
             }
         }
-        //如果总余额不足，终止交易
-        if(flag == false) return ;
-
-        //开始交易，遍历所有合同，合同的to方才有权利使用这份余额
-        //money是用户输入的值，代表两家企业间交易的额度
-        for(uint i = 0; i < constructor.length; i++)
-        {
-            if(contracts[i].address_to == msg.sender)
-            {
+        if(total_available < money)
+            return false;
+        
+        //开始转让，遍历所有合同，扣除转让方持有合同中的余额
+        for(uint i = 0; i < constructor.length; i++) {
+            if(contracts[i].address_to == msg.sender) {
                 //如果一份合同的余额足够，直接给这份合同的used加上money，并新建一份额度为money的普通合同，结束遍历
-                if(contracts[i].amount - contracts[i].used >= money)
-                {
+                if(contracts[i].total - contracts[i].used >= money) {
                     contracts[i].used += money;
-                    Trust_contract memory t = Trust_contract(now_time, contracts[i].end_time, msg.sender, address_to, money, 0);
+                    Trust_contract memory t = Trust_contract(now_time, contracts[i].end_time, contracts[i].address_from, payee, money, 0);
                     contracts.push(t);
                     break;
-                }
-                //如果一份合同的余额不够，就用光这份合同的余额，并新建一份额度为所用余额的普通合同，更新money用于下一个循环
-                else
-                {
-                    money -= (contracts[i].amount - contracts[i].used);
-                    t = Trust_contract(now_time, contracts[i].end_time, msg, msg.sender, address_to, contracts[i].amount - contracts[i].used, 0);
+                } else {
+                    money -= contracts[i].total - contracts[i].used;
+                    Trust_contract memory t = Trust_contract(now_time, contracts[i].end_time, contracts[i].address_from, payee, contracts[i].total-contracts[i].used, 0);
                     contracts.push(t);
-                    contracts[i].used = contracts[i].amount;
+                    contracts[i].used = contracts[i].total;
                 }
             }
         }
+        return true;
     }
 
     //企业从银行贷款或者融资的函数
@@ -111,7 +99,7 @@ contract Bank
         for(uint i = 0; i < contracts.length; i++)
         {
             if(contracts[i].address_to == msg.sender)
-                mount += (contracts[i].amount - contracts[i].used);
+                mount += (contracts[i].total - contracts[i].used);
             if(mount >= money)
             {
                 flag = true;
@@ -127,7 +115,7 @@ contract Bank
             if(contracts[i].address_to == msg.sender)
             {
                 //如果一份合同的余额足够，直接给这份合同的used加上money，并给msg.sender的账户加上money，结束遍历
-                if(contracts[i].amount - contracts[i].used >= money)
+                if(contracts[i].total - contracts[i].used >= money)
                 {
                     contracts[i].used += money;
                     balance[msg.sender] += money;
@@ -137,10 +125,10 @@ contract Bank
                 //如果一份合同的余额不足，就用光余额，并给msg.sender的账户加上money，更新money用于下一个循环
                 else
                 {
-                    money -= (contracts[i].amount - contracts[i].used);
+                    money -= (contracts[i].total - contracts[i].used);
                     balance[msg.sender] += money;
                     balance[bank] -= money;
-                    contracts[i].used = contracts[i].amount;
+                    contracts[i].used = contracts[i].total;
                 }
             }
         }
@@ -192,7 +180,7 @@ contract Bank
                 //如果这是一份普通合同，就在to的账户上加钱
                 else
                 {
-                    balance[contracts[i].address_to] += (contracts[i].amount - contracts[i].used);
+                    balance[contracts[i].address_to] += (contracts[i].total - contracts[i].used);
                     delete contracts[i]; //删除合同
                 }
             }
