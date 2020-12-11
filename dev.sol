@@ -187,6 +187,9 @@ contract Supply {
 
         receipts[indexOfNewReceipt].approval = e_ApproveStatus.Approved;
         receipts[indexOfNewReceipt].status = e_ReceiptStatus.Valid;
+
+        if(receipts[indexOfOriginReceipt].amount == 0)
+            receipts[indexOfOriginReceipt].status = e_ReceiptStatus.Invalid;
     }
 
     //新的企业拒绝应收账款单据的转让
