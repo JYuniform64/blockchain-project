@@ -36,7 +36,7 @@ contract Supply {
             }
         }
         if(need_register) {
-            enterprises.push(msg.sender)
+            enterprises.push(msg.sender);
             return true;
         } else 
             return false;
@@ -99,7 +99,7 @@ contract Supply {
         require(receipts[indexOfReceipt].start_time + receipts[indexOfReceipt].duration > now, "Time expired");
         require(receipts[indexOfReceipt].approval == e_ApproveStatus.WaittingDebtee, "Invalid approval status");
 
-        receipts[indexOfReceipt].approval = e_ApprovalStatus.WaittingBank;
+        receipts[indexOfReceipt].approval = e_ApproveStatus.WaittingBank;
         receipts[indexOfReceipt].status = e_ReceiptStatus.Invalid;
     }
 
@@ -109,7 +109,7 @@ contract Supply {
         require(msg.sender == receipts[indexOfReceipt].debtee, "No privilege");
         require(receipts[indexOfReceipt].approval == e_ApproveStatus.WaittingDebtee, "Invalid approval status");
 
-        receipts[indexOfReceipt].approval = e_ApprovalStatus.Disapproved;
+        receipts[indexOfReceipt].approval = e_ApproveStatus.Disapproved;
         receipts[indexOfReceipt].status = e_ReceiptStatus.Invalid;
     }
 
@@ -118,11 +118,11 @@ contract Supply {
         require(indexOfReceipt < receipt_num, "Invalid index");
         require(msg.sender == receipts[indexOfReceipt].debtee, "No privilege");
         require(receipts[indexOfReceipt].start_time + receipts[indexOfReceipt].duration > now, "Time expired");
-        require(receipts[indexOfReceipt].approval == e_ApproveStatus.waittingBank &&
+        require(receipts[indexOfReceipt].approval == e_ApproveStatus.WaittingBank &&
             receipts[indexOfReceipt].status == e_ReceiptStatus.Invalid, "Invalid approval status");
         require(enough_reputation(receipts[indexOfReceipt].debtor, receipts[indexOfReceipt].amount), "No enough reputation");
 
-        receipts[indexOfReceipt].approval = e_ApprovalStatus.Approved;
+        receipts[indexOfReceipt].approval = e_ApproveStatus.Approved;
         receipts[indexOfReceipt].status = e_ReceiptStatus.Valid;
     }
 
@@ -130,10 +130,10 @@ contract Supply {
     function disapprove_purchase(uint indexOfReceipt) public {
         require(indexOfReceipt < receipt_num, "Invalid index");
         require(msg.sender == receipts[indexOfReceipt].debtee, "No privilege");
-        require(receipts[indexOfReceipt].approval == e_ApproveStatus.waittingBank &&
+        require(receipts[indexOfReceipt].approval == e_ApproveStatus.WaittingBank &&
             receipts[indexOfReceipt].status == e_ReceiptStatus.Invalid, "Invalid approval status");
 
-        receipts[indexOfReceipt].approval = e_ApprovalStatus.Disapproved;
+        receipts[indexOfReceipt].approval = e_ApproveStatus.Disapproved;
         receipts[indexOfReceipt].status = e_ReceiptStatus.Invalid;
     }
 
@@ -157,7 +157,7 @@ contract Supply {
             debtee,
             receipts[indexOfReceipt].start_time,
             receipts[indexOfReceipt].duration,
-            remark
+            remark,
             e_ApproveStatus.WaittingTransfer,
             e_ReceiptStatus.Invalid
         );  
@@ -170,15 +170,15 @@ contract Supply {
     //检查两个应收账款单据是否同源
     function from_same_receipt(uint index1, uint index2) public returns (bool) {
         //assume both indexs are valid.
-        if(receipts[index1].debtor == receipt[index2].debtor && 
-            receipts[index1].start_time == receipt[index2].start_time &&
-            receipts[index1].duration == receipt[index2].duration) return true;
+        if(receipts[index1].debtor == receipts[index2].debtor && 
+            receipts[index1].start_time == receipts[index2].start_time &&
+            receipts[index1].duration == receipts[index2].duration) return true;
         else return false;
     }
     
     //新的企业同意应收账款单据的转让
     function accept_transfer(uint indexOfOriginReceipt, uint indexOfNewReceipt) public {
-        require(indexOfReceipt < receipt_num && indexOfOriginReceipt < receipt_num, "Invalid index");
+        require(indexOfNewReceipt < receipt_num && indexOfOriginReceipt < receipt_num, "Invalid index");
         require(from_same_receipt(indexOfOriginReceipt, indexOfNewReceipt), "Not from same receipt");
         require(msg.sender == receipts[indexOfNewReceipt].debtee, "No privilege");
         require(receipts[indexOfNewReceipt].status == e_ReceiptStatus.Invalid && 
@@ -195,7 +195,7 @@ contract Supply {
     //新的企业拒绝应收账款单据的转让
     function reject_transfer(uint indexOfOriginReceipt, uint indexOfNewReceipt) public {
         //return the money in new receipt back to the origin receipt
-        require(indexOfReceipt < receipt_num && indexOfOriginReceipt < receipt_num, "Invalid index");
+        require(indexOfNewReceipt < receipt_num && indexOfOriginReceipt < receipt_num, "Invalid index");
         require(from_same_receipt(indexOfOriginReceipt, indexOfNewReceipt), "Not from same receipt");
         require(msg.sender == receipts[indexOfNewReceipt].debtee, "No privilege");
         require(receipts[indexOfNewReceipt].status == e_ReceiptStatus.Invalid && 
@@ -231,7 +231,7 @@ contract Supply {
             return true;
         }
         if(receipts[indexOfReceipt].approval == e_ApproveStatus.Approved) {
-            require(receipts[indexOfReceipt].status = e_ReceiptStatus.Valid, "Invalid status");
+            require(receipts[indexOfReceipt].status == e_ReceiptStatus.Valid, "Invalid status");
             require(msg.sender == receipts[indexOfReceipt].debtee, "No privilege");
             receipts[indexOfReceipt].status = e_ReceiptStatus.Invalid;
             return true;
